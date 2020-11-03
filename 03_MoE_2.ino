@@ -1,16 +1,16 @@
 #include "MoE_Controller.h"
 
 
-
+Controller controller;
 
 void setup() {
-  Controller controller;
+  controller.initialize();
   controller.beginUDP();
-  controller.flashBeacon();
-  
-}
+  controller.flashBeacon(); 
 
+}
 void loop() {
-  // put your main code here, to run repeatedly:
+  controller.handleUDP();
+  controller.maintain();
 
 }

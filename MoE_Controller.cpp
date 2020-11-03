@@ -9,6 +9,14 @@ IPAddress _myIP = IPAddress(192, 168, 1, 100);
 
 
 Controller::Controller() {
+    
+}
+
+Controller::Controller(IPAddress forceIP) {
+    //TODO: constructor with forced IP?
+}
+
+void Controller::initialize() {
     #ifdef DEBUG
         Serial.println("Trying to obtain IP from DHCP...");
     #endif
@@ -44,10 +52,6 @@ Controller::Controller() {
     _broadcastIP[3] = 255;
 }
 
-Controller::Controller(IPAddress forceIP) {
-    //TODO: constructor with forced IP?
-}
-
 void Controller::beginUDP() {
     eUDP.begin(_moePort);
 }
@@ -56,6 +60,35 @@ void Controller::flashBeacon() {
     eUDP.beginPacket(_broadcastIP, _moePort);
     eUDP.write(_beacon, sizeof(_beacon));
     eUDP.endPacket();
+}
+
+void Controller::handleBeacon(IPAddress sender) {
+    for (int i = 0; i < _numKD; i++)
+    {
+        if (_knownDevices[i] == sender[3]) {
+            #ifdef DEBUG
+                Serial.println("Device already saved");
+            #endif
+            return;
+        }
+    }
+    _knownDevices[_numKD] = sender[3];
+    _numKD++;
+}
+
+void Controller::handleUDP() {
+    int packetSize = eUDP.parsePacket();
+    eUDP.readByte(_incomingUDP, 4);
+
+    switch (_incomingUDP[0])
+    {
+    case 0xFF:
+        handleBeacon(eUDP.remoteIP());
+        break;
+    //TODO: ...  work in progress ...
+    default:
+        break;
+    }
 }
 
 void Controller::maintain() {
@@ -69,3 +102,4 @@ void Controller::handleLocalMIDI() {
 void Controller::handleUDPMIDI() {
     //TODO: handle incoming UDP MIDI data
 }
+
