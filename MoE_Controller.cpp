@@ -1,12 +1,17 @@
 #include <Arduino.h>
+#include <EEPROM.h>
 #include <EthernetUdp.h>
 #include "MoE_Controller.h"
 
+#define DEBUG
 
-const byte _myMac[] = {0x00, 0xAA, 0xBB, 0xCD, 0xDE, 0x01};
-const byte _beacon[] = {0xFF, 0x00, 0x00, 0x00};
-IPAddress _myIP = IPAddress(192, 168, 1, 100);
-
+byte * Controller::macRead() {
+  byte ret[6];
+  for (int i = 0; i < 6; i++) {
+    ret[i] = EEPROM.read(i);
+  }
+  return ret;
+}
 
 Controller::Controller() {
     
@@ -17,11 +22,11 @@ Controller::Controller(IPAddress forceIP) {
 }
 
 void Controller::initialize() {
+    //_myMac = *macRead();
     #ifdef DEBUG
         Serial.println("Trying to obtain IP from DHCP...");
     #endif
     if (Ethernet.begin(_myMac)) {
-        _myIP = Ethernet.localIP(); 
     } else {
         if (Ethernet.hardwareStatus() == EthernetNoHardware) {
             #ifdef DEBUG
@@ -34,22 +39,23 @@ void Controller::initialize() {
         }  
     if (Ethernet.linkStatus() == LinkOFF) {
         #ifdef DEBUG
-            Serial.println("Ethernet cable not connected!"); //never got this message, even with cable unplugged
+            Serial.println("Ethernet cable not connected!"); 
         #endif
     }
     #ifdef DEBUG
         Serial.println("Failed to obtain IP from DHCP, setting default values.");
     #endif
-    Ethernet.begin(_myMac, _myIP);
+    Ethernet.begin(_myMac, _safeIP);
     }
     
     #ifdef DEBUG 
         Serial.print("Arduino adress: ");
         Serial.println(Ethernet.localIP());
     #endif
-
-    _broadcastIP = _myIP;
+    
+    _broadcastIP = Ethernet.localIP();
     _broadcastIP[3] = 255;
+
 }
 
 void Controller::beginUDP() {
@@ -60,6 +66,7 @@ void Controller::flashBeacon() {
     eUDP.beginPacket(_broadcastIP, _moePort);
     eUDP.write(_beacon, sizeof(_beacon));
     eUDP.endPacket();
+    Serial.println("packet sent");
 }
 
 void Controller::handleBeacon(IPAddress sender) {
@@ -77,7 +84,7 @@ void Controller::handleBeacon(IPAddress sender) {
 }
 
 void Controller::handleUDP() {
-    int packetSize = eUDP.parsePacket();
+    eUDP.parsePacket();
     eUDP.readByte(_incomingUDP, 4);
 
     switch (_incomingUDP[0])
@@ -102,4 +109,3 @@ void Controller::handleLocalMIDI() {
 void Controller::handleUDPMIDI() {
     //TODO: handle incoming UDP MIDI data
 }
-
