@@ -10,7 +10,9 @@ void setup() {
   controller.flashBeacon();
 }
 void loop() {
-  //controller.handleUDP();
-  //controller.maintain();
+  
+  controller.handleUDP();
+
+  controller.maintain();
 
 }
