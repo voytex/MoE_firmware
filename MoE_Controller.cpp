@@ -5,7 +5,7 @@
 
 #define DEBUG
 
-void Controller::macRead(byte *mac) {
+void Controller::macLoad(byte *mac) {
   //since I know I will read Mac Address, I can hard-write 6 in there
   for (int i = 0; i < 6; i++) {
     mac[i] = EEPROM.read(i);
@@ -21,7 +21,7 @@ Controller::Controller(IPAddress forceIP) {
 }
 
 void Controller::initialize() {
-    macRead(_myMac);
+    macLoad(_myMac);
     #ifdef DEBUG
         Serial.println("Trying to obtain IP from DHCP...");
     #endif
@@ -82,7 +82,7 @@ void Controller::handleBeacon(IPAddress sender) {
     _numKD++;
     //??????????????????????????????????????????*/
 
-    patchbay.addSubscription(1, sender[3], 1);
+    patchbay.addSubscription(17, sender[3], 42);
     patchbay.printSubs();   
 }
 
@@ -119,21 +119,25 @@ Patchbay::Patchbay() {
 
 }
 
-int Patchbay::addSubscription(byte incoChannel, byte destIPnib, byte destChannel) {
-    if (_numSubs >= _maxSubs) {
+int Patchbay::addSubscription(byte srcCh, byte dstIPnib, byte dstCh) {
+    if (_numSubs >= MAX_SUBS) {
         return -1;
     }
-    
-    for (byte i = 0; i < _maxSubs; i++)
+
+    byte srcdstCh;
+    if ((srcCh > 15) || (dstCh > 15)) {
+        return -2;
+    } else {
+         srcdstCh = (srcCh << 4) | dstCh;
+    }
+
+    for (byte i = 0; i < MAX_SUBS; i++)
     {
-        if ((incoChannel == subscriptions[i].sourceChannel) && (destIPnib == subscriptions[i].destIPnib) && (destChannel == subscriptions[i].destChannel)) {
-            return 0;
-        }
+        if ((dstIPnib == _subscriptions[i].dstIPnib) && (srcdstCh == _subscriptions[i].srcdstChannel));
     }
     
-    subscriptions[_numSubs].sourceChannel = incoChannel;
-    subscriptions[_numSubs].destIPnib = destIPnib;
-    subscriptions[_numSubs].destChannel = destChannel;
+    _subscriptions[_numSubs].dstIPnib = dstIPnib;
+    _subscriptions[_numSubs].srcdstChannel = srcdstCh;
     _numSubs++;
     return 1;
 }
@@ -141,12 +145,12 @@ int Patchbay::addSubscription(byte incoChannel, byte destIPnib, byte destChannel
 void Patchbay::printSubs() {
     for (byte i = 0; i < _numSubs; i++)
     {
-        Serial.print(subscriptions[i].sourceChannel, DEC);
+        Serial.print((_subscriptions[i].srcdstChannel & 0xF0) >> 4, DEC);
         Serial.print("\t -> \t");
         Serial.print("192.168.1.");
-        Serial.print(subscriptions[i].destIPnib, DEC);
+        Serial.print(_subscriptions[i].dstIPnib, DEC);
         Serial.print(": channel = ");
-        Serial.println(subscriptions[i].destChannel, DEC);
+        Serial.println((_subscriptions[i].srcdstChannel & 0x0F), DEC);
     }
     
 }

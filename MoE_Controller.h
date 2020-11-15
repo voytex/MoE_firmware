@@ -15,17 +15,16 @@
 
 class Patchbay {
   private:
-    const byte _maxSubs = 64;
     typedef struct subscription {
-      byte sourceChannel;
-      byte destIPnib;
-      byte destChannel;
+      //first nibble is source channel, second nibble is destination
+      byte srcdstChannel;
+      byte dstIPnib;
     };
-    subscription subscriptions[MAX_SUBS];
+    subscription _subscriptions[MAX_SUBS];
     byte _numSubs = 0;
   public:
     Patchbay();
-    int addSubscription(byte sourceChannel, byte destIPnib, byte destChannel);
+    int addSubscription(byte srcCh, byte dstIPnib, byte dstCh);
     void deleteSubscription(byte sourceChannel, byte destIPnib, byte destChannel);
     void sendAll(byte sourceChannel); 
     void printSubs();
@@ -34,7 +33,7 @@ class Patchbay {
 
 class Controller {
     private:
-        void macRead(byte *mac);  
+        void macLoad(byte *mac);  
         
         //ETHERNET_SETTINGS_________________________________________
         
