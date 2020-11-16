@@ -1,18 +1,17 @@
 #include "MoE_Controller.h"
 
-
 Controller controller;
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   controller.initialize();
-  controller.beginUDP();
+  controller.begin();
   controller.flashBeacon();
 }
-void loop() {
-  
+void loop()
+{
   controller.handleUDP();
-
+  controller.handleMIDI();
   controller.maintain();
-
 }
