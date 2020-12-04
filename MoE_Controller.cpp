@@ -79,6 +79,7 @@ void Controller::flashBeacon()
     eUDP.beginPacket(_broadcastIP, MOE_PORT);
     eUDP.write(_beacon, sizeof(_beacon));
     eUDP.endPacket();
+    Serial.println("[beacon]");
 }
 
 void Controller::handleUDP()
@@ -89,28 +90,34 @@ void Controller::handleUDP()
         switch (_incomingUDP[0])
         {
         case 0x08:
+            Serial.print("[0x08] - sending subs >> ");
+            Serial.println(eUDP.remoteIP());
             sendSubs(eUDP.remoteIP());
             break;
 
         case 0x0F:
+            Serial.println("[0x0F] - adding subscription.");
             addSubscription(_incomingUDP[1], _incomingUDP[2], _incomingUDP[3]);
             sendSubs(eUDP.remoteIP());
             break;
 
         case 0xA2:
-            midiSerial.write(_incomingUDP[1]);
-            midiSerial.write(_incomingUDP[2]);
+            Serial.println("[0xA2] - writing 2MIDI");
+            //midiSerial.write(_incomingUDP[1]);
+            //midiSerial.write(_incomingUDP[2]);
             break;
         
         case 0xA3:
-            midiSerial.write(_incomingUDP[1]);
-            midiSerial.write(_incomingUDP[2]);
-            midiSerial.write(_incomingUDP[3]);
+            Serial.println("[0xA3] - writing 3MIDI");
+            //midiSerial.write(_incomingUDP[1]);
+            //midiSerial.write(_incomingUDP[2]);
+            //midiSerial.write(_incomingUDP[3]);
             //Serial.println("something shouldve happened");
             break;
         
         case 0xFF:
-            addSubscription(1, eUDP.remoteIP()[3], 1);
+            Serial.println("[0xFF] - adding subscription");
+            addSubscription(0, eUDP.remoteIP()[3], 0);
             break;
         //TODO: ...  work in progress ...
         default:
