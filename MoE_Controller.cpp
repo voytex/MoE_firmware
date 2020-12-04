@@ -59,7 +59,7 @@ void Controller::initialize()
     }
 
 #ifdef DEBUG
-    Serial.print("Arduino adress: ");
+    Serial.print("Arduino address: ");
     Serial.println(Ethernet.localIP());
 #endif
 
@@ -81,32 +81,37 @@ void Controller::flashBeacon()
     eUDP.endPacket();
 }
 
-void Controller::handleBeacon(IPAddress sender)
-{
-    addSubscription(2, sender[3], 4);
-    printSubs();
-}
-
 void Controller::handleUDP()
 {
     if (eUDP.parsePacket())
     {
         eUDP.readByte(_incomingUDP, 4);
-        for (byte i = 0; i < 4; i++)
-        {
-            Serial.println(_incomingUDP[i], BIN);
-        }
         switch (_incomingUDP[0])
         {
-        case 'A':
-            handleBeacon(eUDP.remoteIP());
+        case 0x08:
+            sendSubs(eUDP.remoteIP());
             break;
-        case 0xAA:
-            Serial.println(_incomingUDP[1], BIN);
-            Serial.println(_incomingUDP[2], BIN);
-            Serial.println(_incomingUDP[3], BIN);
+
+        case 0x0F:
+            addSubscription(_incomingUDP[1], _incomingUDP[2], _incomingUDP[3]);
+            sendSubs(eUDP.remoteIP());
+            break;
+
+        case 0xA2:
+            midiSerial.write(_incomingUDP[1]);
+            midiSerial.write(_incomingUDP[2]);
             break;
         
+        case 0xA3:
+            midiSerial.write(_incomingUDP[1]);
+            midiSerial.write(_incomingUDP[2]);
+            midiSerial.write(_incomingUDP[3]);
+            //Serial.println("something shouldve happened");
+            break;
+        
+        case 0xFF:
+            addSubscription(1, eUDP.remoteIP()[3], 1);
+            break;
         //TODO: ...  work in progress ...
         default:
             break;
@@ -140,9 +145,6 @@ void Controller::handleMIDI()
             data0 = midiSerial.read();
             data1 = midiSerial.read();
             data2 = midiSerial.read();
-            // Serial.println(data0, BIN);
-            // Serial.println(data1, BIN);
-            // Serial.println(data2, BIN);
             sendUDP(data0, data1, true, data2);
             break;
         }
@@ -157,21 +159,18 @@ void Controller::sendUDP(byte data0, byte data1, bool threeByte, byte data2)
     {
         if (srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
         {
-            Serial.println(data0, BIN);
             data0 = data0 & 0xF0;
-            Serial.println(data0, BIN);
             data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
             IPAddress remoteIP = Ethernet.localIP();
             remoteIP[3] = _subscriptions[i].dstIPnib;
             eUDP.beginPacket(remoteIP, MOE_PORT);
-            eUDP.write(0xAA);
+            if (threeByte) eUDP.write(0xA3);
+            else eUDP.write(0xA2);
             eUDP.write(data0);
-            Serial.println(data0, BIN);
             eUDP.write(data1);
             if (threeByte)
                 eUDP.write(data2);
             eUDP.endPacket();
-            Serial.println("sent MIDI mesage!");
         }
     }
 }
@@ -243,4 +242,18 @@ void Controller::printSubs()
         Serial.print(": channel = ");
         Serial.println((_subscriptions[i].srcdstChannel & 0x0F), DEC);
     }
+}
+
+void Controller::sendSubs(IPAddress remotePC)
+{
+    for (byte i = 0; i < _numSubs; i++)
+    {
+        eUDP.beginPacket(remotePC, MOE_PORT);
+        eUDP.write(0x80);
+        eUDP.write((_subscriptions[i].srcdstChannel & 0xF0) >> 4);
+        eUDP.write(_subscriptions[i].dstIPnib);
+        eUDP.write(_subscriptions[i].srcdstChannel & 0x0F);
+        eUDP.endPacket();
+    }
+    
 }

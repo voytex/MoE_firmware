@@ -11,7 +11,9 @@ void setup()
 }
 void loop()
 {
-  controller.handleUDP();
   controller.handleMIDI();
+  
+  controller.handleUDP();
+
   controller.maintain();
 }

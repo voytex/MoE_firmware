@@ -29,12 +29,10 @@ private:
   byte _safeIP[4] = {192, 168, 1, 100};
 
   //Broadcast beacon for auto-device-discover
-  const byte _beacon[4] = {'A', 'H', 'O', 'J'};
+  const byte _beacon[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
   //__________________________________________________________
 
-  byte _knownDevices[32];
-  unsigned int _numKD = 0;
   IPAddress _forceIP;
   IPAddress _broadcastIP;
   byte _incomingUDP[4];
@@ -50,10 +48,12 @@ private:
   };
   subscription _subscriptions[MAX_SUBS];
   byte _numSubs = 0;
-  int addSubscription(byte srcCh, byte dstIPnib, byte dstCh);
-  int delSubscription(byte srcCh, byte dstIPnib, byte dstCh);
+
+  int addSubscription(byte, byte, byte);
+  int delSubscription(byte, byte, byte);
+  void sendSubs(IPAddress);
   void printSubs();
-  void sendUDP(byte data0, byte data1, bool threeByte, byte data2);
+  void sendUDP(byte, byte, bool, byte);
 
 public:
   Controller();
@@ -64,7 +64,6 @@ public:
   void begin();
 
   void flashBeacon();
-  void handleBeacon(IPAddress);
 
   void maintain();
 
