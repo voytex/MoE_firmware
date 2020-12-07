@@ -38,7 +38,7 @@ private:
   byte _incomingUDP[4];
 
   EthernetUDP eUDP;
-  SoftwareSerial midiSerial;
+
 
   typedef struct subscription
   {
@@ -53,9 +53,13 @@ private:
   int delSubscription(byte, byte, byte);
   void sendSubs(IPAddress);
   void printSubs();
-  void sendUDP(byte, byte, bool, byte);
+  void sendUDP(byte, byte, byte);
+  void sendUDP(byte, byte);
+
+  byte _data0, _data1, _data2;
 
 public:
+  SoftwareSerial midiSerial;
   Controller();
   Controller(IPAddress);
 
@@ -70,7 +74,6 @@ public:
   void handleMIDI();
 
   void handleUDP();
-
 };
 
 #endif

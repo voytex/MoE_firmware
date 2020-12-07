@@ -15,11 +15,11 @@ void Controller::macLoad(byte *mac)
     }
 }
 
-Controller::Controller() : midiSerial(2, 3)
+Controller::Controller() : midiSerial(4, 5)
 {
 }
 
-Controller::Controller(IPAddress forceIP) : midiSerial(2, 3)
+Controller::Controller(IPAddress forceIP) : midiSerial(4, 5)
 {
     //TODO: constructor with forced IP?
 }
@@ -95,24 +95,27 @@ void Controller::handleUDP()
             sendSubs(eUDP.remoteIP());
             break;
 
+        case 0x0E:
+            Serial.println("[0x0E] - erasing subscription.");
+            delSubscription(_incomingUDP[1], _incomingUDP[2], _incomingUDP[3]);
+            break;
+
         case 0x0F:
             Serial.println("[0x0F] - adding subscription.");
             addSubscription(_incomingUDP[1], _incomingUDP[2], _incomingUDP[3]);
-            sendSubs(eUDP.remoteIP());
             break;
 
         case 0xA2:
             Serial.println("[0xA2] - writing 2MIDI");
-            //midiSerial.write(_incomingUDP[1]);
-            //midiSerial.write(_incomingUDP[2]);
+            midiSerial.write(_incomingUDP[1]);
+            midiSerial.write(_incomingUDP[2]);
             break;
         
         case 0xA3:
             Serial.println("[0xA3] - writing 3MIDI");
-            //midiSerial.write(_incomingUDP[1]);
-            //midiSerial.write(_incomingUDP[2]);
-            //midiSerial.write(_incomingUDP[3]);
-            //Serial.println("something shouldve happened");
+            midiSerial.write(_incomingUDP[1]);
+            midiSerial.write(_incomingUDP[2]);
+            midiSerial.write(_incomingUDP[3]);
             break;
         
         case 0xFF:
@@ -133,9 +136,35 @@ void Controller::maintain()
 
 void Controller::handleMIDI()
 {
-    int numIncBytes = midiSerial.available();
-    if (numIncBytes)
+    if (midiSerial.available() == 3)
     {
+        _data0 = midiSerial.read();
+        _data1 = midiSerial.read();
+        _data2 = midiSerial.read();
+        //midiSerial.write(_data0);
+        //midiSerial.write(_data1);
+        //midiSerial.write(_data2);
+        sendUDP(_data0, _data1, _data2);
+
+    }
+
+
+   // do
+   // {
+   //     if (midiSerial.available())
+   //     {
+   //         Serial.print("available");
+   //         _data0 = midiSerial.read();
+   //         _data1 = midiSerial.read();
+   //         _data2 = midiSerial.read();
+   //     }
+   // } while (midiSerial.available() > 2);
+   // sendUDP(_data0, _data1, true, _data2);
+   // Serial.print("Sent");
+    
+    /*if (numIncBytes)
+    {
+        Serial.println(numIncBytes);
         switch (numIncBytes)
         {
         case 2:
@@ -153,17 +182,19 @@ void Controller::handleMIDI()
             data1 = midiSerial.read();
             data2 = midiSerial.read();
             sendUDP(data0, data1, true, data2);
+            Serial.println("Sent MIDI!");
             break;
         }
         }
-    }
+    }*/
 }
 
-void Controller::sendUDP(byte data0, byte data1, bool threeByte, byte data2)
+void Controller::sendUDP(byte data0, byte data1, byte data2)
 {
     byte srcCh = data0 & 0x0F;
-    for (byte i = 0; i < MAX_SUBS; i++)
+    for (byte i = 0; i < _numSubs; i++)
     {
+        Serial.println(i, DEC);
         if (srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
         {
             data0 = data0 & 0xF0;
@@ -171,12 +202,33 @@ void Controller::sendUDP(byte data0, byte data1, bool threeByte, byte data2)
             IPAddress remoteIP = Ethernet.localIP();
             remoteIP[3] = _subscriptions[i].dstIPnib;
             eUDP.beginPacket(remoteIP, MOE_PORT);
-            if (threeByte) eUDP.write(0xA3);
-            else eUDP.write(0xA2);
+            eUDP.write(0xA3);
             eUDP.write(data0);
             eUDP.write(data1);
-            if (threeByte)
-                eUDP.write(data2);
+            eUDP.write(data2);
+            eUDP.endPacket();
+            Serial.println("just sent");
+        }
+    }
+}
+
+void Controller::sendUDP(byte data0, byte data1)
+{
+    Serial.println("twobyte");
+    byte srcCh = data0 & 0x0F;
+    for (byte i = 0; i < _numSubs; i++)
+    {
+        Serial.println(i, DEC);
+        if (srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
+        {
+            data0 = data0 & 0xF0;
+            data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
+            IPAddress remoteIP = Ethernet.localIP();
+            remoteIP[3] = _subscriptions[i].dstIPnib;
+            eUDP.beginPacket(remoteIP, MOE_PORT);
+            eUDP.write(0xA2);
+            eUDP.write(data0);
+            eUDP.write(data1);
             eUDP.endPacket();
         }
     }
@@ -229,11 +281,15 @@ int Controller::delSubscription(byte srcCh, byte dstIPnib, byte dstCh)
     {
         if ((dstIPnib == _subscriptions[i].dstIPnib) && (srcdstCh == _subscriptions[i].srcdstChannel))
         {
-            _subscriptions[i].dstIPnib = 0x00;
-            _subscriptions[i].srcdstChannel = 0x00;
-            _numSubs--;
+            for (byte j = i; j < _numSubs; j++)
+            {
+                _subscriptions[j].dstIPnib = _subscriptions[j+1].dstIPnib;
+                _subscriptions[j].srcdstChannel = _subscriptions[j+1].srcdstChannel;
+            }
+            break;
         }
     }
+    _numSubs--;
     //not sure if I am 100% able to prevent multiple same subscriptions... so just for sure not putting return 1; in the if scope
     return 1;
 }
@@ -253,6 +309,13 @@ void Controller::printSubs()
 
 void Controller::sendSubs(IPAddress remotePC)
 {
+    if (_numSubs == 0) 
+    {
+        const byte placeholder[4] = {0x80, 0xFF, 0x00, 0xFF};
+        eUDP.beginPacket(remotePC, MOE_PORT);
+        eUDP.write(placeholder, 4);
+        eUDP.endPacket();
+    }
     for (byte i = 0; i < _numSubs; i++)
     {
         eUDP.beginPacket(remotePC, MOE_PORT);
