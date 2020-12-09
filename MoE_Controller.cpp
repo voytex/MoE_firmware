@@ -4,7 +4,18 @@
 #include <SoftwareSerial.h>
 #include "MoE_Controller.h"
 
-#define DEBUG
+
+//#define DEBUG
+
+#ifndef DEBUG
+#define Serial NoOperation
+static class {
+public:
+    void begin(...) {}
+    void print(...) {}
+    void println(...) {}
+} Serial;
+#endif
 
 void Controller::macLoad(byte *mac)
 {
@@ -27,9 +38,7 @@ Controller::Controller(IPAddress forceIP) : midiSerial(4, 5)
 void Controller::initialize()
 {
     macLoad(_myMac);
-#ifdef DEBUG
     Serial.println("Trying to obtain IP from DHCP...");
-#endif
     if (Ethernet.begin(_myMac))
     {
     }
@@ -37,9 +46,7 @@ void Controller::initialize()
     {
         if (Ethernet.hardwareStatus() == EthernetNoHardware)
         {
-#ifdef DEBUG
             Serial.println("Ethernet shield not found!");
-#endif
             while (true)
             {
                 //do nothing
@@ -48,20 +55,13 @@ void Controller::initialize()
         }
         if (Ethernet.linkStatus() == LinkOFF)
         {
-#ifdef DEBUG
             Serial.println("Ethernet cable not connected!");
-#endif
         }
-#ifdef DEBUG
         Serial.println("Failed to obtain IP from DHCP, setting default values.");
-#endif
         Ethernet.begin(_myMac, _safeIP);
     }
-
-#ifdef DEBUG
     Serial.print("Arduino address: ");
     Serial.println(Ethernet.localIP());
-#endif
 
     _broadcastIP = Ethernet.localIP();
     _broadcastIP[3] = 255;
@@ -70,7 +70,6 @@ void Controller::initialize()
 void Controller::begin()
 {
     eUDP.begin(MOE_PORT);
-
     midiSerial.begin(31250);
 }
 
@@ -122,7 +121,6 @@ void Controller::handleUDP()
             Serial.println("[0xFF] - adding subscription");
             addSubscription(0, eUDP.remoteIP()[3], 0);
             break;
-        //TODO: ...  work in progress ...
         default:
             break;
         }
@@ -141,27 +139,9 @@ void Controller::handleMIDI()
         _data0 = midiSerial.read();
         _data1 = midiSerial.read();
         _data2 = midiSerial.read();
-        //midiSerial.write(_data0);
-        //midiSerial.write(_data1);
-        //midiSerial.write(_data2);
         sendUDP(_data0, _data1, _data2);
 
     }
-
-
-   // do
-   // {
-   //     if (midiSerial.available())
-   //     {
-   //         Serial.print("available");
-   //         _data0 = midiSerial.read();
-   //         _data1 = midiSerial.read();
-   //         _data2 = midiSerial.read();
-   //     }
-   // } while (midiSerial.available() > 2);
-   // sendUDP(_data0, _data1, true, _data2);
-   // Serial.print("Sent");
-    
     /*if (numIncBytes)
     {
         Serial.println(numIncBytes);
@@ -199,22 +179,20 @@ void Controller::sendUDP(byte data0, byte data1, byte data2)
         {
             data0 = data0 & 0xF0;
             data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
-            IPAddress remoteIP = Ethernet.localIP();
-            remoteIP[3] = _subscriptions[i].dstIPnib;
-            eUDP.beginPacket(remoteIP, MOE_PORT);
+            IPAddress destinationIP = Ethernet.localIP();
+            destinationIP[3] = _subscriptions[i].dstIPnib;
+            eUDP.beginPacket(destinationIP, MOE_PORT);
             eUDP.write(0xA3);
             eUDP.write(data0);
             eUDP.write(data1);
             eUDP.write(data2);
             eUDP.endPacket();
-            Serial.println("just sent");
         }
     }
 }
 
 void Controller::sendUDP(byte data0, byte data1)
 {
-    Serial.println("twobyte");
     byte srcCh = data0 & 0x0F;
     for (byte i = 0; i < _numSubs; i++)
     {
@@ -223,9 +201,9 @@ void Controller::sendUDP(byte data0, byte data1)
         {
             data0 = data0 & 0xF0;
             data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
-            IPAddress remoteIP = Ethernet.localIP();
-            remoteIP[3] = _subscriptions[i].dstIPnib;
-            eUDP.beginPacket(remoteIP, MOE_PORT);
+            IPAddress destinationIP = Ethernet.localIP();
+            destinationIP[3] = _subscriptions[i].dstIPnib;
+            eUDP.beginPacket(destinationIP, MOE_PORT);
             eUDP.write(0xA2);
             eUDP.write(data0);
             eUDP.write(data1);
@@ -307,18 +285,18 @@ void Controller::printSubs()
     }
 }
 
-void Controller::sendSubs(IPAddress remotePC)
+void Controller::sendSubs(IPAddress editorPC)
 {
     if (_numSubs == 0) 
     {
         const byte placeholder[4] = {0x80, 0xFF, 0x00, 0xFF};
-        eUDP.beginPacket(remotePC, MOE_PORT);
+        eUDP.beginPacket(editorPC, MOE_PORT);
         eUDP.write(placeholder, 4);
         eUDP.endPacket();
     }
     for (byte i = 0; i < _numSubs; i++)
     {
-        eUDP.beginPacket(remotePC, MOE_PORT);
+        eUDP.beginPacket(editorPC, MOE_PORT);
         eUDP.write(0x80);
         eUDP.write((_subscriptions[i].srcdstChannel & 0xF0) >> 4);
         eUDP.write(_subscriptions[i].dstIPnib);

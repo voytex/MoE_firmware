@@ -1,5 +1,13 @@
 {
     "files.associations": {
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "__string": "cpp",
+        "atomic": "cpp",
+        "cstddef": "cpp",
+        "locale": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "istream": "cpp",
+        "typeinfo": "cpp"
     }
 }
