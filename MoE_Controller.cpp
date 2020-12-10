@@ -268,7 +268,6 @@ int Controller::delSubscription(byte srcCh, byte dstIPnib, byte dstCh)
         }
     }
     _numSubs--;
-    //not sure if I am 100% able to prevent multiple same subscriptions... so just for sure not putting return 1; in the if scope
     return 1;
 }
 
