@@ -32,6 +32,7 @@ private:
   const byte _beacon[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
   IPAddress _broadcastIP;
+  IPAddress _destinationIP;
  
   EthernetUDP eUDP;
   
@@ -65,7 +66,10 @@ private:
   void sendUDP(byte, byte);
   //_________________________________________________________
   
-  byte _data0, _data1, _data2;          //will come handy when implementing running status
+  byte _incoming, _data0, _data1, _data2;          //will come handy when implementing running status
+
+  bool _recSB = false;
+  bool _recDB = false;
 
   SoftwareSerial midiSerial;            //MIDI interface
 

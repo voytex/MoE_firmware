@@ -11,6 +11,7 @@
 #define Serial NoOperation
 static class {
 public:
+    void write(...) {}
     void begin(...) {}
     void print(...) {}
     void println(...) {}
@@ -65,6 +66,9 @@ void Controller::initialize()
 
     _broadcastIP = Ethernet.localIP();
     _broadcastIP[3] = 255;
+
+    //preparation
+    _destinationIP = Ethernet.localIP();
 }
 
 void Controller::begin()
@@ -134,14 +138,43 @@ void Controller::maintain()
 
 void Controller::handleMIDI()
 {
-    if (midiSerial.available() == 3)
-    {
-        _data0 = midiSerial.read();
-        _data1 = midiSerial.read();
-        _data2 = midiSerial.read();
+    if (midiSerial.available())
+        _incoming = midiSerial.read();
+    
+    //normal status:
+    if (_incoming >= 0b10000000) {
+        _data0 = _incoming;
+        _recSB = true;
+    } else if ((_recSB) && (!_recDB)) {
+        _data1 = _incoming;
+        _recDB = true;
+    } else if ((_recSB) && (_recDB)) {
+        _data2 = _incoming;
         sendUDP(_data0, _data1, _data2);
-
+        _recSB = false;
+        _recDB = false;
     }
+
+    //running status:
+    if ((_incoming < 0b10000000) && (!_recSB)) {
+        if (_recDB) {
+            _data2 = _incoming;
+            sendUDP(_data1, _data2);
+            _recDB = false;
+        } else {
+            _data1 = _incoming;
+            _recDB = true;
+        }
+    }
+
+    //if (midiSerial.available() == 3)
+    //{
+    //    _data0 = midiSerial.read();
+    //    _data1 = midiSerial.read();
+    //    _data2 = midiSerial.read();
+    //    sendUDP(_data0, _data1, _data2);
+    //
+    //}
     /*if (numIncBytes)
     {
         Serial.println(numIncBytes);
@@ -179,9 +212,8 @@ void Controller::sendUDP(byte data0, byte data1, byte data2)
         {
             data0 = data0 & 0xF0;
             data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
-            IPAddress destinationIP = Ethernet.localIP();
             destinationIP[3] = _subscriptions[i].dstIPnib;
-            eUDP.beginPacket(destinationIP, MOE_PORT);
+            eUDP.beginPacket(_destinationIP, MOE_PORT);
             eUDP.write(0xA3);
             eUDP.write(data0);
             eUDP.write(data1);
@@ -191,8 +223,15 @@ void Controller::sendUDP(byte data0, byte data1, byte data2)
     }
 }
 
-void Controller::sendUDP(byte data0, byte data1)
+void Controller::sendUDP(byte data1, byte data2)
 {
+    //TODO: rework to use it for running status!!!
+    eUDP.beginPacket(_destinationIP, MOE_PORT);
+    eUDP.write(0xA2);
+    eUDP.write(data1);
+    eUDP.write(data2);
+    eUDP.endPacket();
+    /*
     byte srcCh = data0 & 0x0F;
     for (byte i = 0; i < _numSubs; i++)
     {
@@ -209,7 +248,7 @@ void Controller::sendUDP(byte data0, byte data1)
             eUDP.write(data1);
             eUDP.endPacket();
         }
-    }
+    }*/
 }
 
 int Controller::addSubscription(byte srcCh, byte dstIPnib, byte dstCh)
