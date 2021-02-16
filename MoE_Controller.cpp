@@ -150,20 +150,20 @@ void Controller::handleMIDI()
         _recDB = true;
     } else if ((_recSB) && (_recDB)) {
         _data2 = _incoming;
-        sendUDP(_data0, _data1, _data2);
+        sendUDP3();
         _recSB = false;
         _recDB = false;
     }
 
     //running status:
     if ((_incoming < 0b10000000) && (!_recSB)) {
-        if (_recDB) {
-            _data2 = _incoming;
-            sendUDP(_data1, _data2);
-            _recDB = false;
-        } else {
+        if (!_recDB) {
             _data1 = _incoming;
             _recDB = true;
+        } else {
+            _data2 = _incoming;
+            sendUDP2();
+            _recDB = false;
         }
     }
 
@@ -202,53 +202,40 @@ void Controller::handleMIDI()
     }*/
 }
 
-void Controller::sendUDP(byte data0, byte data1, byte data2)
+void Controller::sendUDP3()
 {
-    byte srcCh = data0 & 0x0F;
+    _srcCh = _data0 & 0x0F;
     for (byte i = 0; i < _numSubs; i++)
     {
-        Serial.println(i, DEC);
-        if (srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
+        if (_srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
         {
-            data0 = data0 & 0xF0;
-            data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
-            destinationIP[3] = _subscriptions[i].dstIPnib;
+            _data0 = _data0 & 0xF0;
+            _data0 = _data0 | (_subscriptions[i].srcdstChannel & 0x0F);
+            _destinationIP[3] = _subscriptions[i].dstIPnib;
             eUDP.beginPacket(_destinationIP, MOE_PORT);
             eUDP.write(0xA3);
-            eUDP.write(data0);
-            eUDP.write(data1);
-            eUDP.write(data2);
+            eUDP.write(_data0);
+            eUDP.write(_data1);
+            eUDP.write(_data2);
             eUDP.endPacket();
         }
     }
 }
 
-void Controller::sendUDP(byte data1, byte data2)
+void Controller::sendUDP2()
 {
-    //TODO: rework to use it for running status!!!
-    eUDP.beginPacket(_destinationIP, MOE_PORT);
-    eUDP.write(0xA2);
-    eUDP.write(data1);
-    eUDP.write(data2);
-    eUDP.endPacket();
-    /*
-    byte srcCh = data0 & 0x0F;
     for (byte i = 0; i < _numSubs; i++)
     {
-        Serial.println(i, DEC);
-        if (srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
+        if (_srcCh == (_subscriptions[i].srcdstChannel & 0xF0) >> 4)
         {
-            data0 = data0 & 0xF0;
-            data0 = data0 | (_subscriptions[i].srcdstChannel & 0x0F);
-            IPAddress destinationIP = Ethernet.localIP();
-            destinationIP[3] = _subscriptions[i].dstIPnib;
-            eUDP.beginPacket(destinationIP, MOE_PORT);
+            _destinationIP[3] = _subscriptions[i].dstIPnib;
+            eUDP.beginPacket(_destinationIP, MOE_PORT);
             eUDP.write(0xA2);
-            eUDP.write(data0);
-            eUDP.write(data1);
+            eUDP.write(_data1);
+            eUDP.write(_data2);
             eUDP.endPacket();
         }
-    }*/
+    }
 }
 
 int Controller::addSubscription(byte srcCh, byte dstIPnib, byte dstCh)

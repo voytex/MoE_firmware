@@ -62,11 +62,11 @@ private:
 
   
   //UDP_sending______________________________________________
-  void sendUDP(byte, byte, byte);
-  void sendUDP(byte, byte);
+  void sendUDP3();
+  void sendUDP2();
   //_________________________________________________________
   
-  byte _incoming, _data0, _data1, _data2;          //will come handy when implementing running status
+  byte _incoming, _data0, _data1, _data2, _srcCh;          //will come handy when implementing running status
 
   bool _recSB = false;
   bool _recDB = false;
