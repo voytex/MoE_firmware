@@ -68,8 +68,8 @@ private:
   
   byte _incoming, _data0, _data1, _data2, _srcCh;          //will come handy when implementing running status
 
-  bool _recSB = false;
-  bool _recDB = false;
+  bool _recSB;
+  bool _recDB;
 
   SoftwareSerial midiSerial;            //MIDI interface
 

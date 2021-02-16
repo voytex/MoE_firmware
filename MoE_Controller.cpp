@@ -5,7 +5,7 @@
 #include "MoE_Controller.h"
 
 
-//#define DEBUG
+#define DEBUG
 
 #ifndef DEBUG
 #define Serial NoOperation
@@ -69,6 +69,9 @@ void Controller::initialize()
 
     //preparation
     _destinationIP = Ethernet.localIP();
+    
+    _recSB = false;
+    _recDB = false;
 }
 
 void Controller::begin()
@@ -138,32 +141,41 @@ void Controller::maintain()
 
 void Controller::handleMIDI()
 {
-    if (midiSerial.available())
+    if (midiSerial.available()) {
         _incoming = midiSerial.read();
     
-    //normal status:
-    if (_incoming >= 0b10000000) {
-        _data0 = _incoming;
-        _recSB = true;
-    } else if ((_recSB) && (!_recDB)) {
-        _data1 = _incoming;
-        _recDB = true;
-    } else if ((_recSB) && (_recDB)) {
-        _data2 = _incoming;
-        sendUDP3();
-        _recSB = false;
-        _recDB = false;
-    }
-
-    //running status:
-    if ((_incoming < 0b10000000) && (!_recSB)) {
-        if (!_recDB) {
+        //normal status:
+        if (_incoming >= 0b10000000) 
+        {
+            _data0 = _incoming;
+            _recSB = true;
+        } 
+        else if ((_recSB) && (!_recDB)) 
+        {
             _data1 = _incoming;
             _recDB = true;
-        } else {
+        } 
+        else if ((_recSB) && (_recDB)) 
+        {
             _data2 = _incoming;
-            sendUDP2();
+            sendUDP3();
+            _recSB = false;
             _recDB = false;
+        }
+        //running status:
+        else if (!_recSB)
+        {
+            if (!_recDB) 
+            {
+                _data1 = _incoming;
+                _recDB = true;
+            } 
+            else 
+            {
+                _data2 = _incoming;
+                sendUDP2();
+                _recDB = false;
+            }
         }
     }
 
