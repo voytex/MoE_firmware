@@ -6,4 +6,4 @@ advanced routing in terms of MIDI channels of each device. MoE devices are contr
 This device was prototyped on Arduino UNO with WizNet Ethernet Shield as depicted below:
 ![Prototype](https://user-images.githubusercontent.com/63453314/206691454-619c2658-b3f1-4432-9201-5f98601619f1.jpg)
 
-For the final product a custom PCB was created, no photograph of the device was taken sadly. It used ATmega3208 and thanks to MCUdude's <a href"https://github.com/MCUdude/MegaCoreX">MegaCoreX</a> it could be programmed with Arduino IDE. 
+For the final product a custom PCB was created, no photograph of the device was taken sadly. It used ATmega3208 and thanks to MCUdude's <a href="https://github.com/MCUdude/MegaCoreX">MegaCoreX</a> it could be programmed with Arduino IDE. 
